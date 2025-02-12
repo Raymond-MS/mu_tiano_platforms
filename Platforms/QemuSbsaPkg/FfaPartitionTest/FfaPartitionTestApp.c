@@ -113,6 +113,9 @@ FfaPartitionTestAppEntry (
   DIRECT_MSG_ARGS_EX      DirectMsgArgsEx;
   UINT16                  CurrentMajorVersion;
   UINT16                  CurrentMinorVersion;
+  UINT32                  TargetId;
+  UINT64                  Flags;
+  UINT32                  ByteOffsetTag;
 
   // Query FF-A version to make sure FF-A is supported
   Status = ArmFfaLibVersion (
@@ -325,6 +328,28 @@ FfaPartitionTestAppEntry (
     goto Done;
   } else {
     DEBUG ((DEBUG_INFO, "Test Test Service Notification Test Success\n"));
+  }
+
+  // Test the NS_RES_INFO_GET command, all endpoints
+  TargetId = 0;
+  Flags = 0;
+  ByteOffsetTag = 0;
+  Status = FfaNsResInfoGet (TargetId, Flags, ByteOffsetTag);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "Command Failed w/ Error Code: %r\n", Status));
+  } else {
+    DEBUG ((DEBUG_INFO, "NS_RES_INFO_GET All Endpoints Success\n"));
+  }
+
+  // Test the NS_RES_INFO_GET command, Secure Partition endpoints
+  TargetId = 0x8002;
+  Flags = 1;
+  ByteOffsetTag = 0;
+  Status = FfaNsResInfoGet (TargetId, Flags, ByteOffsetTag);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "Command Failed w/ Error Code: %r\n", Status));
+  } else {
+    DEBUG ((DEBUG_INFO, "NS_RES_INFO_GET Targeted Endpoint Success\n"));
   }
 
   return EFI_SUCCESS;
