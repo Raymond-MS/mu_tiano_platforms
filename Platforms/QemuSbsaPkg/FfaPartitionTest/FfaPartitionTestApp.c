@@ -100,11 +100,14 @@ FfaPartitionTestAppEntry (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS              Status;
-  ARM_SMC_ARGS            SmcArgs                    = { 0 };
-  EFI_GUID                FfaTestServiceGuid         = FFA_TEST_SERVICE_GUID;
-  EFI_GUID                FfaNotificationServiceGuid = FFA_NOTIFICATION_SERVICE_GUID;
-  EFI_GUID                FfaTpmServiceGuid          = FFA_TPM_SERVICE_GUID;
+  EFI_STATUS    Status;
+  ARM_SMC_ARGS  SmcArgs                    = { 0 };
+  EFI_GUID      FfaTestServiceGuid         = FFA_TEST_SERVICE_GUID;
+  EFI_GUID      FfaNotificationServiceGuid = FFA_NOTIFICATION_SERVICE_GUID;
+
+ #ifdef TPM2_ENABLE
+  EFI_GUID  FfaTpmServiceGuid = FFA_TPM_SERVICE_GUID;
+ #endif
   EFI_FFA_PART_INFO_DESC  FfaTestPartInfo;
   UINT32                  Count;
   UINT32                  Size;
@@ -118,7 +121,7 @@ FfaPartitionTestAppEntry (
   UINT32                  ByteOffsetTag;
 
   // Query FF-A version to make sure FF-A is supported
-  Status = ArmFfaLibVersion (
+  Status = ArmFfaLibGetVersion (
              ARM_FFA_MAJOR_VERSION,
              ARM_FFA_MINOR_VERSION,
              &CurrentMajorVersion,
@@ -204,7 +207,7 @@ FfaPartitionTestAppEntry (
   }
 
   // Followed by querying which notification ID is supported by the Ffa test SP
-  Status = ArmFfaLibFeatures (ARM_FFA_FEATURE_ID_SCHEDULE_RECEIVER_INTERRUPT, 0, &SriIndex, &Dummy);
+  Status = ArmFfaLibGetFeatures (ARM_FFA_FEATURE_ID_SCHEDULE_RECEIVER_INTERRUPT, 0, &SriIndex, &Dummy);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Unable to query feature SRI number with FF-A Ffa test SP (%r).\n", Status));
     goto Done;
@@ -235,9 +238,9 @@ FfaPartitionTestAppEntry (
   DirectMsgArgsEx.Arg1 = 0xba7aff2eb1eac765;
   DirectMsgArgsEx.Arg2 = 0xb610b3a359f64054;
   DirectMsgArgsEx.Arg3 = 0x03;
-  DirectMsgArgsEx.Arg4 = ((6 << 16) | (0));
-  DirectMsgArgsEx.Arg5 = ((7 << 16) | (1));
-  DirectMsgArgsEx.Arg6 = ((8 << 16) | (2));
+  DirectMsgArgsEx.Arg4 = (((UINT64)6 << 32) | (0));
+  DirectMsgArgsEx.Arg5 = (((UINT64)7 << 32) | (1));
+  DirectMsgArgsEx.Arg6 = (((UINT64)8 << 32) | (2));
   Status               = FfaMessageSendDirectReq2 (FfaTestPartInfo.PartitionId, &FfaNotificationServiceGuid, &DirectMsgArgsEx);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Unable to communicate direct req 2 with FF-A Ffa test SP (%r).\n", Status));
@@ -257,11 +260,11 @@ FfaPartitionTestAppEntry (
   DirectMsgArgsEx.Arg1 = 0xba7aff2eb1eac765;
   DirectMsgArgsEx.Arg2 = 0xb710b3a359f64054;
   DirectMsgArgsEx.Arg3 = 0x05;
-  DirectMsgArgsEx.Arg4 = ((1 << 16) | (0));
-  DirectMsgArgsEx.Arg5 = ((2 << 16) | (1));
-  DirectMsgArgsEx.Arg6 = ((3 << 16) | (2));
-  DirectMsgArgsEx.Arg7 = ((4 << 16) | (3));
-  DirectMsgArgsEx.Arg8 = ((5 << 16) | (4));
+  DirectMsgArgsEx.Arg4 = (((UINT64)1 << 32) | (0));
+  DirectMsgArgsEx.Arg5 = (((UINT64)2 << 32) | (1));
+  DirectMsgArgsEx.Arg6 = (((UINT64)3 << 32) | (2));
+  DirectMsgArgsEx.Arg7 = (((UINT64)4 << 32) | (3));
+  DirectMsgArgsEx.Arg8 = (((UINT64)5 << 32) | (4));
   Status               = FfaMessageSendDirectReq2 (FfaTestPartInfo.PartitionId, &FfaNotificationServiceGuid, &DirectMsgArgsEx);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Unable to communicate direct req 2 with FF-A Ffa test SP (%r).\n", Status));
@@ -281,7 +284,7 @@ FfaPartitionTestAppEntry (
   DirectMsgArgsEx.Arg1 = 0xba7aff2eb1eac765;
   DirectMsgArgsEx.Arg2 = 0xb610b3a359f64054;
   DirectMsgArgsEx.Arg3 = 0x01;
-  DirectMsgArgsEx.Arg4 = ((7 << 16) | (1));
+  DirectMsgArgsEx.Arg4 = (((UINT64)7 << 32) | (1));
   Status               = FfaMessageSendDirectReq2 (FfaTestPartInfo.PartitionId, &FfaNotificationServiceGuid, &DirectMsgArgsEx);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Unable to communicate direct req 2 with FF-A Ffa test SP (%r).\n", Status));
@@ -295,6 +298,7 @@ FfaPartitionTestAppEntry (
     DEBUG ((DEBUG_INFO, "Thermal Service Destroy Success\n"));
   }
 
+ #ifdef TPM2_ENABLE
   // Call the TPM Service get_interface_version
   ZeroMem (&DirectMsgArgsEx, sizeof (DirectMsgArgsEx));
   DirectMsgArgsEx.Arg0 = 0x0F000001;
@@ -310,6 +314,8 @@ FfaPartitionTestAppEntry (
   } else {
     DEBUG ((DEBUG_INFO, "TPM Service Interface Version: %d.%d\n", DirectMsgArgsEx.Arg1 >> 16, DirectMsgArgsEx.Arg1 & 0xFFFF));
   }
+
+ #endif
 
   // Invoke the Test Service to trigger a notification event
   ZeroMem (&DirectMsgArgsEx, sizeof (DirectMsgArgsEx));
